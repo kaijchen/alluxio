@@ -1,6 +1,6 @@
 name: Java 8 Unit Tests
 
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -11,9 +11,25 @@ jobs:
       matrix:
         modules:
           - >-
-            !alluxio.client.**,!alluxio.master.**
+            alluxio.master.transport.GrpcMessagingTransportTest
           - >-
-            alluxio.client.**,alluxio.master.**
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
+          - >-
+            alluxio.master.transport.GrpcMessagingTransportTest
 
     runs-on: ubuntu-latest
     if: "!contains(github.event.pull_request.title, 'DOCFIX') &&
