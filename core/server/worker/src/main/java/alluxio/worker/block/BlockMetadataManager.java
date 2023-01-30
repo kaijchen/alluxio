@@ -20,6 +20,7 @@ import alluxio.DefaultStorageTierAssoc;
 import alluxio.StorageTierAssoc;
 import alluxio.conf.Configuration;
 import alluxio.conf.PropertyKey;
+import alluxio.conf.Reconfigurable;
 import alluxio.exception.ExceptionMessage;
 import alluxio.worker.block.allocator.Allocator;
 import alluxio.worker.block.annotator.BlockAnnotator;
@@ -56,7 +57,7 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 // TODO(bin): consider how to better expose information to Evictor and Allocator.
-public final class BlockMetadataManager {
+public final class BlockMetadataManager implements Reconfigurable {
   private static final Logger LOG = LoggerFactory.getLogger(BlockMetadataManager.class);
   public static final StorageTierAssoc WORKER_STORAGE_TIER_ASSOC =
       new DefaultStorageTierAssoc(
@@ -64,10 +65,10 @@ public final class BlockMetadataManager {
           PropertyKey.Template.WORKER_TIERED_STORE_LEVEL_ALIAS);
 
   /** A list of managed {@link StorageTier}, in order from lowest tier ordinal to greatest. */
-  private final List<StorageTier> mTiers;
+  private volatile List<StorageTier> mTiers;
 
   /** A map from tier alias to {@link StorageTier}. */
-  private final Map<String, StorageTier> mAliasToTiers;
+  private volatile Map<String, StorageTier> mAliasToTiers;
 
   /** Used to get iterators per locations. */
   private final BlockIterator mBlockIterator;
@@ -81,14 +82,8 @@ public final class BlockMetadataManager {
       "alluxio.worker.block.evictor.GreedyEvictor";
 
   private BlockMetadataManager() {
-    mTiers = IntStream.range(0, WORKER_STORAGE_TIER_ASSOC.size()).mapToObj(
-        tierOrdinal -> DefaultStorageTier.newStorageTier(
-            WORKER_STORAGE_TIER_ASSOC.getAlias(tierOrdinal),
-            tierOrdinal,
-            WORKER_STORAGE_TIER_ASSOC.size() > 1))
-        .parallel()
-        .collect(toImmutableList());
-    mAliasToTiers = mTiers.stream().collect(toImmutableMap(StorageTier::getTierAlias, identity()));
+    // Init mTiers and mAliasToTiers.
+    update();
     // Create the block iterator.
     if (Configuration.isSet(PropertyKey.WORKER_EVICTOR_CLASS)) {
       LOG.warn(String.format("Evictor is being emulated. Please use %s instead.",
@@ -120,6 +115,18 @@ public final class BlockMetadataManager {
       // Create default block iterator
       mBlockIterator = new DefaultBlockIterator(this, BlockAnnotator.Factory.create());
     }
+  }
+
+  @Override
+  public synchronized void update() {
+    mTiers = IntStream.range(0, WORKER_STORAGE_TIER_ASSOC.size()).mapToObj(
+        tierOrdinal -> DefaultStorageTier.newStorageTier(
+            WORKER_STORAGE_TIER_ASSOC.getAlias(tierOrdinal),
+            tierOrdinal,
+            WORKER_STORAGE_TIER_ASSOC.size() > 1))
+        .parallel()
+        .collect(toImmutableList());
+    mAliasToTiers = mTiers.stream().collect(toImmutableMap(StorageTier::getTierAlias, identity()));
   }
 
   /**
