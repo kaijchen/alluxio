@@ -55,6 +55,11 @@
 
   <repositories>
     <repository>
+      <id>ratis-250-rc1</id>
+      <name>Apache Ratis 2.5.0-rc1</name>
+      <url>https://repository.apache.org/content/repositories/orgapacheratis-1138</url>
+    </repository>
+    <repository>
       <id>central</id>
       <!-- This should be at top, it makes maven try the central repo first and then others and hence faster dep resolution -->
       <name>Maven Repository</name>
